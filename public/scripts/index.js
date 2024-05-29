@@ -10,7 +10,7 @@ $(document).ready(function () {
 
   const { RTCPeerConnection, RTCSessionDescription } = window;
 
-  const peerConnection = new RTCPeerConnection();
+  let peerConnection = new RTCPeerConnection();
 
   function updateUserData() {
     userData.name = $('#userName').val();
@@ -89,6 +89,8 @@ $(document).ready(function () {
 
   function tryingCallRejected() {
 
+    peerConnection.close();
+    peerConnection = new RTCPeerConnection();
     currentCallSocketId = null;
     isAlreadyCalling = false;
     getCalled = false;
