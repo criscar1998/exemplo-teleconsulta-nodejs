@@ -45,27 +45,39 @@ export const handleWebSocketRoutes = (io: SocketIOServer) => {
             });
         });
 
-    socket.on("make-answer", data => {
-        socket.to(data.to).emit("answer-made", {
-            socket: socket.id,
-            answer: data.answer
+        socket.on("make-answer", data => {
+            socket.to(data.to).emit("answer-made", {
+                socket: socket.id,
+                answer: data.answer
+            });
         });
-    });
 
-    socket.on("reject-call", data => {
-        socket.to(data.from).emit("call-rejected", {
-            socket: socket.id,
-            data: findUser(socket.id)
+        socket.on("reject-call", data => {
+            socket.to(data.from).emit("call-rejected", {
+                socket: socket.id,
+                data: findUser(socket.id)
+            });
         });
-    });
 
-    socket.on("disconnect", () => {
-        activeSockets = activeSockets.filter(
-            existingSocket => existingSocket.id !== socket.id
-        );
-        socket.broadcast.emit("remove-user", {
-            socketId: socket.id
+        socket.on('end-call', ({ socketId }) => {
+            socket.to(socketId).emit('call-ended', {
+                from: socket.id,
+                to: socketId
+            });
+        });
+
+        socket.on("disconnect", () => {
+            activeSockets = activeSockets.filter(
+                existingSocket => existingSocket.id !== socket.id
+            );
+            socket.broadcast.emit("remove-user", {
+                socketId: socket.id,
+            });
+
+            socket.broadcast.emit("doctor-disconnected", {
+                socketId: socket.id
+            });
+
         });
     });
-});
 }

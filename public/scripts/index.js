@@ -1,8 +1,8 @@
 $(document).ready(function () {
   let isAlreadyCalling = false;
   let getCalled = false;
+  let currentCallSocketId = null;
   let identified = false;
-  let callingPatientAudio;
   let userData = {
     name: '',
     role: ''
@@ -10,7 +10,7 @@ $(document).ready(function () {
 
   const { RTCPeerConnection, RTCSessionDescription } = window;
 
-  const peerConnection = new RTCPeerConnection();
+  let peerConnection = new RTCPeerConnection();
 
   function updateUserData() {
     userData.name = $('#userName').val();
@@ -62,20 +62,6 @@ $(document).ready(function () {
     new Audio('../audios/notification.mp3').play();
   }
 
-  function callingAudioPatient() {
-    if (!callingPatientAudio) {
-      callingPatientAudio = new Audio('../audios/calling.mp3');
-      callingPatientAudio.play();
-    }
-  }
-
-  function callingAudioPatientPause() {
-    if (callingPatientAudio && !callingPatientAudio.paused) {
-      callingPatientAudio.pause();
-      callingPatientAudio.currentTime = 0;
-    }
-  }
-
   socket.on("update-patient-list", ({ patients }) => {
     updatePatientList(patients);
     if (patients.length > 0) {
@@ -102,6 +88,13 @@ $(document).ready(function () {
   }
 
   function tryingCallRejected() {
+
+    peerConnection.close();
+    currentCallSocketId = null;
+    isAlreadyCalling = false;
+    getCalled = false;
+    peerConnection = new RTCPeerConnection();
+
     document.getElementById("remote-video").style.display = "none";
     document.getElementById("calling-patient").style.display = "none";
     document.getElementById("modal-meeting").style.display = "none";
@@ -114,6 +107,7 @@ $(document).ready(function () {
   }
 
   async function callPatient(socketId) {
+    currentCallSocketId = socketId;
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
 
@@ -141,6 +135,8 @@ $(document).ready(function () {
       }
     }
 
+    currentCallSocketId = data.socket;
+
     try {
       await peerConnection.setRemoteDescription(
         new RTCSessionDescription(data.offer)
@@ -153,8 +149,8 @@ $(document).ready(function () {
         answer,
         to: data.socket
       });
-      tryingCallAccepted();
       getCalled = true;
+      tryingCallAccepted();
     } catch (error) {
       console.error('Erro ao configurar a conexão WebRTC:', error);
       alert('Não foi possivel conectar, entre em contato com o desenvolvedor.')
@@ -163,9 +159,15 @@ $(document).ready(function () {
 
   socket.on("remove-user", ({ socketId }) => {
     const elToRemove = document.getElementById(socketId);
-
     if (elToRemove) {
       elToRemove.remove();
+    }
+    if (currentCallSocketId === socketId) {
+      tryingCallRejected();
+      currentCallSocketId = null;
+      isAlreadyCalling = false;
+      getCalled = false;
+      alert(`Usuario foi desconectado`);
     }
   });
 
@@ -175,15 +177,29 @@ $(document).ready(function () {
     );
 
     if (!isAlreadyCalling) {
-      callPatient(data.socket);
       isAlreadyCalling = true;
+      callPatient(data.socket);
     }
-
+    tryingCallAccepted();
   });
 
   socket.on("call-rejected", data => {
-    alert(`Paciente: ${data.data.name} rejeitou a teleconsulta.`);
     tryingCallRejected();
+    alert(`Paciente: ${data.data.name} rejeitou a teleconsulta.`);
+  });
+
+
+  document.getElementById('button-end-call').addEventListener('click', () => {
+    socket.emit('end-call', { socketId: currentCallSocketId });
+    tryingCallRejected();
+  });
+
+  socket.on("call-ended", data => {
+    currentCallSocketId = null;
+    isAlreadyCalling = false;
+    getCalled = false;
+    tryingCallRejected();
+    alert('A chamada foi encerrada.');
   });
 
   peerConnection.ontrack = function ({ streams: [stream] }) {
