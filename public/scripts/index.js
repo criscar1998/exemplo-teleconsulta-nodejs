@@ -10,7 +10,7 @@ $(document).ready(function () {
 
   const { RTCPeerConnection, RTCSessionDescription } = window;
 
-  let peerConnection = new RTCPeerConnection();
+  const peerConnection = new RTCPeerConnection();
 
   function updateUserData() {
     userData.name = $('#userName').val();
@@ -89,11 +89,10 @@ $(document).ready(function () {
 
   function tryingCallRejected() {
 
-    peerConnection.close();
     currentCallSocketId = null;
     isAlreadyCalling = false;
     getCalled = false;
-    peerConnection = new RTCPeerConnection();
+
 
     document.getElementById("remote-video").style.display = "none";
     document.getElementById("calling-patient").style.display = "none";
