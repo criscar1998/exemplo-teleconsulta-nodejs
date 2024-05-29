@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tele Consulta</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+    integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+    crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+
+  <div class="container mx-auto h-screen flex items-center justify-center">
+    <!-- Content -->
+    <div class="content-container">
+
+      <!-- Identification -->
+      <div class="identification flex flex-col gap-3">
+        <div>
+          <label>Seu Nome:</label>
+          <input type="text" id="userName">
+        </div>
+        <div>
+          <label>Você é?</label>
+          <select id="userRole">
+            <option value="doctor">Médico</option>
+            <option value="patient">Paciente</option>
+          </select>
+        </div>
+        <div>
+          <button
+            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+            id="button-next">
+            <span>Prosseguir</span>
+          </button>
+        </div>
+      </div>
+      <!-- End Identification -->
+
+      <div class="list-doctors-online max-w-64" style="display: none;">
+        <h4 style="color: white;">Você esta na fila de atendimento, aguarde ser chamado...</h4>
+      </div>
+      <div class="list-patients-online max-w-64" style="display: none;">
+        <h4 style="color: white;">Pacientes na sala de espera:</h4>
+        <div class="list" id="list-patients-online">
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="fixed modal-meeting h-screen w-full z-10" id="modal-meeting">
+    <div class="video-container">
+      <div class="calling" id="calling-patient" style="display: none;">
+        <h4>Chamando...</h4>
+      </div>
+      <video autoplay class="remote-video" id="remote-video" style="display: none;"></video>
+      <video autoplay muted class="local-video" id="local-video"></video>
+      <div class="meet-controls">
+        <button class="end-call" id="end-call">
+          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed">
+            <path
+              d="m136-304-92-90q-12-12-12-28t12-28q88-95 203-142.5T480-640q118 0 232.5 47.5T916-450q12 12 12 28t-12 28l-92 90q-11 11-25.5 12t-26.5-8l-116-88q-8-6-12-14t-4-18v-114q-38-12-78-19t-82-7q-42 0-82 7t-78 19v114q0 10-4 18t-12 14l-116 88q-12 9-26.5 8T136-304Zm104-198q-29 15-56 34.5T128-424l40 40 72-56v-62Zm480 2v60l72 56 40-38q-29-26-56-45t-56-33Zm-480-2Zm480 2Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <script src="./scripts/index.js"></script>
+</body>
+
+</html>
