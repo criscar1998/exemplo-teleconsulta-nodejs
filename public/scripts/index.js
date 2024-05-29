@@ -10,7 +10,33 @@ $(document).ready(function () {
 
   const { RTCPeerConnection, RTCSessionDescription } = window;
 
-  let peerConnection = new RTCPeerConnection();
+  let peerConnection = createPeerConnection()
+
+  function createPeerConnection() {
+    const pc = new RTCPeerConnection();
+    pc.ontrack = function ({ streams: [stream] }) {
+      const remoteVideo = document.getElementById("remote-video");
+      if (remoteVideo) {
+        remoteVideo.srcObject = stream;
+      }
+    };
+    return pc;
+  }
+
+  function resetPeerConnection() {
+    if (peerConnection) {
+      peerConnection.ontrack = null;
+      peerConnection.close();
+    }
+    peerConnection = createPeerConnection();
+
+    const localVideo = document.getElementById("local-video");
+    const localStream = localVideo.srcObject;
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+    }
+  }
 
   function updateUserData() {
     userData.name = $('#userName').val();
@@ -73,11 +99,12 @@ $(document).ready(function () {
   function updatePatientList(patients) {
     const activePatientContainer = document.getElementById("list-patients-online");
     patients.forEach(patient => {
+      const alreadyExistingPatient = document.getElementById(patient.id);
 
-      const userContainerEl = createBoxPatient(patient);
-
-      activePatientContainer.appendChild(userContainerEl);
-
+      if (!alreadyExistingPatient) {
+        const userContainerEl = createBoxPatient(patient);
+        activePatientContainer.appendChild(userContainerEl);
+      }
     });
   }
 
@@ -88,15 +115,17 @@ $(document).ready(function () {
   }
 
   function tryingCallRejected() {
-
-    peerConnection.close();
-    peerConnection = new RTCPeerConnection();
+    resetPeerConnection();
     currentCallSocketId = null;
     isAlreadyCalling = false;
     getCalled = false;
 
+    const remoteVideo = document.getElementById("remote-video");
+    if (remoteVideo) {
+      remoteVideo.srcObject = null;
+      remoteVideo.style.display = "none";
+    }
 
-    document.getElementById("remote-video").style.display = "none";
     document.getElementById("calling-patient").style.display = "none";
     document.getElementById("modal-meeting").style.display = "none";
   }
@@ -132,6 +161,7 @@ $(document).ready(function () {
         socket.emit("reject-call", {
           from: data.socket
         });
+        tryingCallRejected();
         return;
       }
     }
@@ -203,13 +233,6 @@ $(document).ready(function () {
     alert('A chamada foi encerrada.');
   });
 
-  peerConnection.ontrack = function ({ streams: [stream] }) {
-    const remoteVideo = document.getElementById("remote-video");
-    if (remoteVideo) {
-      remoteVideo.srcObject = stream;
-    }
-  };
-
   navigator.getUserMedia(
     { video: true, audio: true },
     stream => {
@@ -222,6 +245,7 @@ $(document).ready(function () {
     },
     error => {
       console.warn(error.message);
+      alert('Verifique as permissões de Microfone e Camera');
     }
   );
 
