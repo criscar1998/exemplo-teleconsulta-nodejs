@@ -131,9 +131,12 @@ $(document).ready(function () {
   }
 
   function tryingCallAccepted() {
+    console.log(peerConnection);
+    console.log('Remote video:', document.getElementById("remote-video").srcObject);
     document.getElementById("remote-video").style.display = "block";
     document.getElementById("calling-patient").style.display = "none";
     document.getElementById("modal-meeting").style.display = "block";
+    
   }
 
   async function callPatient(socketId) {
