@@ -1,12 +1,27 @@
 import { Server as SocketIOServer } from "socket.io";
+import { generateUniqueId } from "./_helpers/genereteUniqueId";
+
+interface user {
+    id: string;
+    name: string;
+    role: string;
+    offer?: any;
+}
+
+interface room {
+    id: string,
+    name: string,
+    users: user[]
+}
 
 export const handleWebSocketRoutes = (io: SocketIOServer) => {
+    //const maximum = 4;
+    var activeSockets: user[] = [];
+    var rooms: room[] = [];
 
-    var activeSockets: { id: string, name: string, role: string }[] = [];
+    const findUser = (socketId: string) => activeSockets.find(existingSocket => existingSocket.id === socketId);
 
     io.on("connection", socket => {
-
-        const findUser = (socketId: string) => activeSockets.find(existingSocket => existingSocket.id === socketId);
 
         socket.on("user-identified", (userData: { name: string, role: string }) => {
 
@@ -34,50 +49,72 @@ export const handleWebSocketRoutes = (io: SocketIOServer) => {
                     patients: patients
                 });
             });
+        });
+
+        socket.on("call-user-room", (data: any) => {
+            io.to(data.socketId).emit("room-invite", { room: data.room, user: findUser(socket.id) });
+        });
+
+        socket.on("create-room", (roomName: string) => {
+            const roomId = generateUniqueId();
+            const newRoom: room = {
+                id: roomId,
+                name: roomName,
+                users: []
+            };
+            rooms.push(newRoom);
+            io.emit("room-created", newRoom);
+        });
+
+
+        socket.on("join-room", data => {
+            const room = rooms.find(room => room.id === data.roomId);
+            if (room) {
+                /*  if (room.users.length >= maximum) {
+                     socket.emit("room-full");
+                     return;
+                 } */
+                const user = findUser(socket.id);
+                const userWithOffer = { ...user, offer: data.offer };
+                room.users.push(userWithOffer);
+                socket.join(data.roomId);
+                io.to(data.roomId).emit("user-joined", { user: userWithOffer });
+
+                console.log(room);
+            }
+        });
+
+        socket.on("leave-room", (roomId: string) => {
+            const room = rooms.find(room => room.id === roomId);
+            if (room) {
+                room.users = room.users.filter(user => user.id !== socket.id);
+                socket.leave(roomId);
+                io.to(roomId).emit("user-left", { userId: socket.id });
+            }
+        });
+
+        socket.on('answer', (data: any) => {
+            const user = findUser(socket.id);
+            const room = rooms.find(room => room.id === data.roomId);
+            if (room && user) {
+                room.users.forEach(user => {
+                    io.to(user.id).emit('answer', { answer: data.answer });
+                });
+            }
+        });
+
+        socket.on("ice-candidate", (data) => {
+            const candidate = data.candidate;
+            socket.to(data.socketId).emit("ice-candidate", { candidate: candidate });
+            console.log(data);
+            // Aqui você pode encaminhar o candidato ICE para o outro usuário na sala
 
         });
 
-        socket.on("call-user", (data: any) => {
-            socket.to(data.to).emit("call-made", {
-                offer: data.offer,
-                socket: socket.id,
-                data: findUser(socket.id)
-            });
-        });
-
-        socket.on("make-answer", data => {
-            socket.to(data.to).emit("answer-made", {
-                socket: socket.id,
-                answer: data.answer
-            });
-        });
-
-        socket.on("reject-call", data => {
-            socket.to(data.from).emit("call-rejected", {
-                socket: socket.id,
-                data: findUser(socket.id)
-            });
-        });
-
-        socket.on('end-call', ({ socketId }) => {
-            socket.to(socketId).emit('call-ended', {
-                from: socket.id,
-                to: socketId
-            });
-        });
 
         socket.on("disconnect", () => {
-            activeSockets = activeSockets.filter(
-                existingSocket => existingSocket.id !== socket.id
-            );
-            socket.broadcast.emit("remove-user", {
-                socketId: socket.id,
-            });
-
-            socket.broadcast.emit("doctor-disconnected", {
-                socketId: socket.id
-            });
-
+            activeSockets = activeSockets.filter(existingSocket => existingSocket.id !== socket.id);
         });
+
     });
 }

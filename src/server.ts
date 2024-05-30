@@ -21,7 +21,7 @@ export class Server {
     private initialize(): void {
         this.app = express();
         this.httpServer = createServer(this.app);
-        this.io = new SocketIOServer(this.httpServer, { transports: ['websocket', 'polling'] });
+        this.io = new SocketIOServer(this.httpServer, { cors: {origin: 'http://localhost:4200'}, transports: ['websocket', 'polling'] });
 
         this.configureApp();
         this.configureRoutes();
