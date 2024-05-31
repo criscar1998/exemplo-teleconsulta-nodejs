@@ -22,6 +22,11 @@ export const handleWebSocketRoutes = (io: SocketIOServer) => {
     // Join room event
     socket.on("join room", (roomId) => {
       if (rooms[roomId]) {
+        
+        if (socket.rooms.has(roomId)) {
+          return;
+        }
+
         socket.join(roomId);
         socket.emit("join room", {
           status: true,
@@ -48,6 +53,20 @@ export const handleWebSocketRoutes = (io: SocketIOServer) => {
           message: "Sala inexistente",
         });
       }
+    });
+
+    socket.on("leave room", (roomId) => {
+        socket.leave(roomId);
+        socket.emit("leave room", {
+          status: true,
+          message: "Saiu da sala",
+          roomId,
+        });
+        socket.to(roomId).emit("user left", {
+          message: "Um usuário saiu da sala",
+          roomId,
+        });
+        console.log("Usuario saiu da sala");
     });
 
     // Offer event
