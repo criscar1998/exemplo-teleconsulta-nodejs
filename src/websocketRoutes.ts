@@ -24,6 +24,11 @@ export const handleWebSocketRoutes = (io: SocketIOServer) => {
       if (rooms[roomId]) {
         
         if (socket.rooms.has(roomId)) {
+          socket.emit("join room", {
+            status: true,
+            message: "Entrou na sala",
+            roomId,
+          });
           return;
         }
 
