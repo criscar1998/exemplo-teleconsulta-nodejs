@@ -2,99 +2,87 @@ import { Server as SocketIOServer } from "socket.io";
 import { generateUniqueId } from "./_helpers/genereteUniqueId";
 
 export const handleWebSocketRoutes = (io: SocketIOServer) => {
-  const rooms = {};
+  const EVENT_CONNECTION = "connection";
+  const EVENT_JOIN = "join room";
+  const EVENT_OFFER = "offer";
+  const EVENT_ANSWER = "answer";
+  const EVENT_CANDIDATE = "candidate";
+  const EVENT_DISCONNECT_USER = "disconnect-user";
+  const EVENT_DISCONNECT = "disconnect";
+  const EVENT_CREATE_ROOM = "create room";
+  const EVENT_CALL = "call";
+  const EVENT_LEAVEROOM = "leave room";
 
   // Socket.io connection event
-  io.on("connection", (socket) => {
+  io.on(EVENT_CONNECTION, (socket) => {
     console.log("A user connected.");
 
-    socket.on("create room", () => {
+    socket.on(EVENT_CREATE_ROOM, () => {
       const roomId = generateUniqueId();
-      socket.join(roomId);
-      rooms[roomId] = true;
-      socket.emit("create room", {
+      console.log("Sala de atendimento criada:", roomId);
+      socket.emit(EVENT_CREATE_ROOM, {
         status: true,
         message: "Sala Criada Com Sucesso",
         roomId,
       });
     });
 
-    // Join room event
-    socket.on("join room", (roomId) => {
-      if (rooms[roomId]) {
-        
-        if (socket.rooms.has(roomId)) {
-          socket.emit("join room", {
-            status: true,
-            message: "Entrou na sala",
-            roomId,
-          });
-          return;
-        }
-
-        socket.join(roomId);
-        socket.emit("join room", {
-          status: true,
-          message: "Entrou na sala",
-          roomId,
-        });
-        console.log("Usuario entrou na sala:", roomId);
-      } else {
-        socket.emit("join room", {
+    socket.on(EVENT_JOIN, (roomId) => {
+      if (!!io.sockets.adapter.rooms[roomId]) {
+        socket.emit(EVENT_JOIN, {
           status: false,
-          message: "Sala inexistente",
-          roomId,
+          message: "A Sala já fechou ou é inexistente",
         });
-        console.log("Usuario tentou acessar uma sala inexistente");
+        console.log(`A Sala já fechou ou é inexistente: ${roomId}`);
+        return;
       }
+
+      console.log(`Novo usuario ${socket.id} entrou na sala: ${roomId}`);
+      socket.join(roomId);
+      socket.emit(EVENT_JOIN, {
+        status: true,
+        message: "Você entrou na sala",
+      });
+      socket.to(roomId).emit(EVENT_CALL, { id: socket.id });
     });
 
-    socket.on("check room", (roomId) => {
-      if (rooms[roomId]) {
-        socket.emit("check room", { status: true, message: "Sala existente" });
-      } else {
-        socket.emit("check room", {
-          status: false,
-          message: "Sala inexistente",
-        });
-      }
+    socket.on(EVENT_OFFER, (data) => {
+      console.log(`${socket.id} ofertando a ${data.id}`);
+      socket.to(data.id).emit(EVENT_OFFER, {
+        id: socket.id,
+        offer: data.offer,
+      });
     });
 
-    socket.on("leave room", (roomId) => {
-        socket.leave(roomId);
-        socket.emit("leave room", {
-          status: true,
-          message: "Saiu da sala",
-          roomId,
-        });
-        socket.to(roomId).emit("user left", {
-          message: "Um usuário saiu da sala",
-          roomId,
-        });
-        console.log("Usuario saiu da sala");
+    socket.on(EVENT_ANSWER, (data) => {
+      console.log(`${socket.id} respondendo a ${data.id}`);
+      socket.to(data.id).emit(EVENT_ANSWER, {
+        id: socket.id,
+        answer: data.answer,
+      });
     });
 
-    // Offer event
-    socket.on("offer", (offer, roomId) => {
-      socket.to(roomId).emit("offer", offer);
-      console.log("Sent offer to room:", roomId);
+    socket.on(EVENT_CANDIDATE, (data) => {
+      console.log(`${socket.id} enviou um candidato para ${data.id}`);
+      socket.to(data.id).emit(EVENT_CANDIDATE, {
+        id: socket.id,
+        candidate: data.candidate,
+      });
     });
 
-    // Answer event
-    socket.on("answer", (answer, roomId) => {
-      socket.to(roomId).emit("answer", answer);
-      console.log("Sent answer to room:", roomId);
+    socket.on(EVENT_LEAVEROOM, (roomId) => {
+      socket.leave(roomId);
+      socket.to(roomId).emit(EVENT_LEAVEROOM, {
+        id: socket.id,
+        message: "Participante saiu da sala"
+      });
     });
 
-    // ICE candidate event
-    socket.on("ice candidate", (candidate, roomId) => {
-      socket.to(roomId).emit("ice candidate", candidate);
-      console.log("Sent ICE candidate to room:", roomId);
-    });
-
-    // Disconnect event
-    socket.on("disconnect", () => {
-      console.log("A user disconnected.");
+    socket.on(EVENT_DISCONNECT, () => {
+      console.log(`${socket.id} desconectou`);
+      io.emit(EVENT_DISCONNECT_USER, {
+        id: socket.id,
+      });
     });
   });
 };
