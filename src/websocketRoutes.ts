@@ -72,6 +72,7 @@ export const handleWebSocketRoutes = (io: SocketIOServer) => {
 
     socket.on(EVENT_LEAVEROOM, (roomId) => {
       socket.leave(roomId);
+      console.log(`${socket.id} saiu da sala ${roomId}`);
       socket.to(roomId).emit(EVENT_LEAVEROOM, {
         id: socket.id,
         message: "Participante saiu da sala"
